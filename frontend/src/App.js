@@ -14,7 +14,6 @@ function App() {
   useEffect(() => {
     axios.get("http://127.0.0.1:5000/tasks")
       .then(response => {
-        //setTasks(response.data.tasks);
         const sorted = response.data.tasks.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
         setTasks(sorted);
       })
@@ -81,12 +80,6 @@ function App() {
       deadline: editedDeadline, 
     })
     .then(response => {
-      // const updatedTasks = tasks.map(task =>
-      //   task._id ===
-      // )
-      // setTasks(tasks.map(task =>
-      //   task._id === editingTaskId ? { ...task, name: response.data.name } : task
-      // ));
       const updatedTasks = tasks.map(task =>
         task._id === editingTaskId
           ? { ...task, ...response.data.updates }
