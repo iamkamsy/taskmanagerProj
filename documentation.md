@@ -1,0 +1,177 @@
+# Task Manager — Project Documentation
+
+## Table of Contents
+1. [Tech Stack](#tech-stack)
+2. [How It All Connects](#how-it-all-connects)
+3. [Running Locally](#running-locally)
+4. [Future Improvements](#future-improvements)
+5. [Starting From Scratch](#starting-from-scratch)
+
+---
+
+## Tech Stack
+
+### Frontend
+| Tool | Version | Purpose |
+|------|---------|---------|
+| React | 18 | UI component tree and state management |
+| TypeScript | 5 | Type safety across all frontend code |
+| Vite | 6 | Dev server, hot reload, and production bundler |
+| Tailwind CSS | v4 | Utility-first styling via `@import "tailwindcss"` in CSS |
+| shadcn/ui | latest | Pre-built accessible components (Button, Input, Label) |
+
+### Backend
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Python | 3.14 | Runtime |
+| Flask | 3.1.0 | Web framework and routing |
+| Flask-CORS | 5.0.0 | Cross-origin request handling between Vite dev server and Flask |
+| Flask server-side sessions | built-in | Signed cookie sessions for auth state |
+| bcrypt | 4.2.1 | Password hashing |
+| gunicorn | 23.0.0 | Production WSGI server (replaces Flask dev server) |
+| python-dotenv | 1.0.1 | Loads `.env` into `os.environ` at startup |
+
+### Database
+| Tool | Purpose |
+|------|---------|
+| MongoDB Atlas | Cloud-hosted database for users and tasks |
+| pymongo | 4.10.1 | Python driver for MongoDB |
+
+---
+
+## How It All Connects
+
+```
+Browser
+   │
+   │  HTTPS (443)
+   ▼
+nginx  ──── /  ──────────────────► React dist/ (static files)
+   │
+   │  /api/*  (proxy_pass)
+   ▼
+gunicorn (127.0.0.1:8000)
+   │
+   ▼
+Flask app
+   ├── /api/auth/*  ──► auth blueprint  ──► MongoDB Atlas (users collection)
+   └── /api/tasks/* ──► tasks blueprint ──► MongoDB Atlas (tasks collection)
+```
+
+### Request lifecycle (example: create task)
+
+1. User fills in the create form in React and clicks **Save Task**.
+2. `createTask()` in `frontend/src/api/tasks.ts` sends `POST /api/tasks` with credentials.
+3. In dev: the Vite proxy (`vite.config.ts`) forwards the request to `http://localhost:5000`.
+   In prod: nginx forwards it to gunicorn at `127.0.0.1:8000`.
+4. Flask checks `session["user_id"]` — if missing, returns 401.
+5. `_validate_fields()` in `backend/routes/tasks.py` validates name, deadline format, past-date, and length caps.
+6. `make_task()` builds the document and `db.tasks.insert_one()` writes it to Atlas.
+7. The new document is serialised and returned as JSON.
+8. React receives the task, splices it into state, re-sorts by deadline, and renders immediately — no page refresh.
+
+### Auth flow
+
+- Signup/login sets `session["user_id"]` and `session["username"]` in a signed HTTP-only cookie.
+- `GET /api/auth/me` is called on every page load — if it returns 401 the user sees the auth page, otherwise the tasks page renders.
+- Logout calls `session.clear()` on the backend and sets `user = null` in `AuthContext`.
+- Any 401 response from a task route throws `SessionExpiredError`, which triggers `logout()` automatically.
+
+### Data ownership
+
+Every task document in MongoDB stores a `user_id` field (ObjectId). All read, update, and delete queries include `{"user_id": ObjectId(user_id)}` — a user physically cannot access another user's tasks regardless of what they send to the API.
+
+---
+
+## Running Locally
+
+```bash
+# Terminal 1 — backend
+cd backend && venv/Scripts/activate && py app.py
+
+# Terminal 2 — frontend
+cd frontend && npm run dev
+```
+
+Open `http://localhost:5173`.
+
+> **MongoDB Atlas Network Access:** During local development, the Atlas cluster's Network Access list is set to allow all IPs (`0.0.0.0/0`). Before deploying to production, remove the open rule and replace it with only the specific IP(s) of your production server. Leaving `0.0.0.0/0` in place on a live deployment is a security risk.
+
+---
+
+## Future Improvements
+
+### Version 2 — Quality of life
+
+| Feature | Notes |
+|---------|-------|
+| Task status (to-do / in progress / done) | Add a `status` field to the task model; filter/group by status in the UI |
+| Overdue indicator | Highlight tasks where `deadline < today` in amber or red |
+| Confirm before delete | Replace the instant delete with a confirmation step to prevent accidental loss |
+| Pagination or infinite scroll | The current list renders all tasks at once; will degrade with large lists |
+| Password reset via email | Requires an email-sending service (SendGrid, AWS SES) |
+
+### Version 3 — Collaboration
+
+| Feature | Notes |
+|---------|-------|
+| Shared task lists | Tasks belong to a list; lists can have multiple members |
+| Role-based access | Owner vs. viewer vs. editor per list |
+| Real-time updates | WebSockets or Server-Sent Events so collaborators see changes live |
+| Activity feed | Show who created or edited what, and when |
+
+---
+
+## Starting From Scratch
+
+If you were to rebuild this project from zero, follow these steps in order.
+
+### 1. Repository and environment
+
+```bash
+# Create repo, add .gitignore (node_modules, venv, .env, dist)
+git init taskManagerProj && cd taskManagerProj
+```
+
+Create `.env.example` first — document every secret before writing any code.
+
+### 2. Backend scaffold
+
+```bash
+mkdir backend && cd backend
+py -m venv venv
+venv/Scripts/activate      # Windows
+pip install flask flask-cors pymongo bcrypt python-dotenv gunicorn certifi
+pip freeze > requirements.txt
+```
+
+- Create `app.py`, `db.py`, `models/user.py`, `models/task.py`, `routes/auth.py`, `routes/tasks.py`.
+- Wire `MongoClient` as an app-level singleton from day one (`init_db(app)` pattern) — do not use `flask.g` for the client.
+- Make `SESSION_COOKIE_SECURE`, `CORS_ORIGINS`, and `FLASK_DEBUG` env-var-driven from day one.
+
+### 3. Frontend scaffold
+
+```bash
+cd ..
+npm create vite@latest frontend -- --template react-ts
+cd frontend && npm install
+npm install -D @tailwindcss/vite tailwindcss
+npx shadcn@latest init
+```
+
+Key config points:
+- Add `@import "tailwindcss"` to your CSS file before running shadcn init.
+- Copy `compilerOptions.paths` from `tsconfig.app.json` into root `tsconfig.json` so shadcn can resolve the `@/` alias.
+- Add the Vite dev proxy (`/api → http://localhost:5000`) to `vite.config.ts` before writing any fetch calls.
+
+### 4. Build order (vertical slices)
+
+| Phase | Gate before moving on |
+|-------|-----------------------|
+| Foundation | Backend starts, frontend starts, Atlas connection confirmed |
+| Auth | Signup, login, logout, and route protection all pass Playwright |
+| Task API | All three routes return correct data for the right user |
+| Task UI | Create, display, delete update state without refresh |
+| Task editing | Edit saves, re-sorts, cancel discards — all without refresh |
+| Hardening | Input validation, session expiry, isolation, and mobile layout |
+| Cloud-readiness | Env-driven config, gunicorn, nginx, certbot, systemd service |
