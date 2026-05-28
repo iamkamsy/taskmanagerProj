@@ -1,0 +1,12 @@
+# Copy this file to backend.hcl after running infra/bootstrap.
+# Do not commit backend.hcl — it contains account-specific state bucket details.
+#
+# Fill in the values from `terraform output` in infra/bootstrap/:
+#   state_bucket_name -> bucket
+#   lock_table_name   -> dynamodb_table
+
+bucket         = "your-unique-bootstrap-state-bucket"
+key            = "prod/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "task-manager-prod-tflock"
+encrypt        = true

@@ -4,6 +4,37 @@ A running log of issues encountered and fixes applied across each phase of the p
 
 ---
 
+## v1.2.0 - Terraform foundation (Part 2)
+
+**Partial S3 backend config (backend.hcl)**
+`infra/backend.tf` now uses a partial S3 backend block (`backend "s3" {}`) with no values hard-coded. Real backend values (bucket name, DynamoDB table) live in an untracked `infra/backend.hcl` file that is listed in `.gitignore`. A committed `infra/backend.hcl.example` serves as the template. Initialisation requires `terraform init -backend-config=backend.hcl`. This avoids committing placeholder strings and avoids any risk of accidentally committing account-specific bucket names.
+
+**Bootstrap module (`infra/bootstrap/`)**
+Added a standalone Terraform module that creates the S3 bucket (versioning, AES-256 encryption, public access blocked, `prevent_destroy`) and DynamoDB table (`PAY_PER_REQUEST`, `LockID` hash key) used for remote state storage and locking. Bootstrap uses local state and is run once before initialising the main `infra/` module. S3 bucket name is a variable to handle global uniqueness requirements.
+
+**Main Terraform configuration (`infra/`)**
+Created all foundation files: `providers.tf`, `backend.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `networking.tf`, `ecr.tf`, `ecs.tf`, `iam.tf`, `logs.tf`, `README.md`.
+
+**Networking — public-subnet-only, no NAT Gateway**
+Created VPC (`10.0.0.0/16`), two public subnets across `us-east-1a` and `us-east-1b`, Internet Gateway, and a public route table. No NAT Gateway, no private subnets. NAT Gateway is intentionally omitted to avoid ~$32/month recurring cost on a personal practice project. In a later part, ECS Fargate tasks will run in public subnets with `assign_public_ip = true`, locked down to ALB-only inbound via security groups. Private subnets + NAT Gateway (or Atlas PrivateLink) are documented as the preferred hardened production architecture and marked as future work.
+
+**ECR repositories**
+Created `task-manager-prod-backend` and `task-manager-prod-frontend` with image scanning on push and `IMMUTABLE` tag mutability.
+
+**ECS cluster**
+Created `task-manager-prod-cluster`. No ECS services, task definitions, or ALB in this part.
+
+**CloudWatch log groups**
+Created `/ecs/task-manager-prod-backend` and `/ecs/task-manager-prod-frontend` with 7-day retention to limit log storage cost.
+
+**IAM baseline**
+Created ECS task execution role (`task-manager-prod-ecs-task-execution`) with the AWS-managed `AmazonECSTaskExecutionRolePolicy` attached. Created ECS task role (`task-manager-prod-ecs-task`) with no inline permissions yet; app-level permissions (Secrets Manager, etc.) will be added in a later part.
+
+**Documentation**
+Added Part 2 deployment section to `documentation.md` covering region, environment, NAT Gateway cost rationale, public-subnet trade-off, resource table, and quick start. Added deployment pointer to `README.md`. Added `infra/README.md` with full variable reference, step-by-step setup guide, and table of what is not in this part.
+
+---
+
 ## v1.1.0 - Docker foundation
 
 **Backend health endpoint added**

@@ -65,3 +65,14 @@ npm run dev
 Frontend runs on `http://localhost:5173`.
 
 Open `http://localhost:5173` in your browser. Sign up for an account and start adding tasks.
+
+## Deployment (AWS / Terraform)
+
+Infrastructure is managed with Terraform in the `infra/` directory. See [`infra/README.md`](infra/README.md) for the full setup guide.
+
+- Region: `us-east-1`, environment: `prod`
+- Remote state is bootstrapped via `infra/bootstrap/` before running the main configuration
+- Part 2 creates the networking foundation, ECR repositories, ECS cluster, IAM roles, and CloudWatch log groups
+- ECS services, ALB, HTTPS, and CI/CD will be added in later parts
+
+> **Cost note:** AWS resources may incur charges. See `infra/README.md` for details.

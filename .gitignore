@@ -38,6 +38,17 @@ skills-lock.json
 .DS_Store
 Thumbs.db
 
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*.tfvars
+!*.tfvars.example
+# .terraform.lock.hcl is intentionally committed for reproducibility
+# Terraform backend config with account-specific state bucket details
+infra/backend.hcl
+
 # IDE
 .vscode/
 .idea/

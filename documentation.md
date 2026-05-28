@@ -196,6 +196,55 @@ Open `http://localhost:5173`.
 
 ---
 
+## Deployment — Part 2: Terraform Foundation
+
+> **AWS cost warning:** AWS resources created by this Terraform configuration may incur charges even without a NAT Gateway. ECR storage, ECS cluster metadata, CloudWatch log ingestion/storage, S3 state bucket storage, and DynamoDB lock table reads/writes all have cost components. Monitor your AWS billing dashboard.
+
+### Overview
+
+| Setting | Value |
+|---|---|
+| Region | `us-east-1` |
+| Environment | `prod` |
+| Remote state | S3 + DynamoDB (bootstrapped separately) |
+| NAT Gateway | **Not created** (see cost rationale below) |
+
+### Networking — cost-conscious design
+
+**NAT Gateway is intentionally omitted.** A NAT Gateway costs approximately $0.045/hour (~$32/month) plus data transfer charges. For a personal practice project this recurring cost is not justified.
+
+Instead, in a later deployment part, ECS Fargate tasks will run in **public subnets** with `assign_public_ip = true`. Security groups will restrict inbound container traffic to the ALB security group only, so containers are not directly accessible from the internet despite having public IPs.
+
+**This is acceptable for a practice deployment, but not the preferred hardened production architecture.** For a real production system, the recommended approach is private subnets + NAT Gateway (or VPC endpoints + Atlas PrivateLink) so containers never receive public IPs. This is documented as future work in `infra/networking.tf` and `infra/README.md`.
+
+### Resources created
+
+| Resource | Name |
+|---|---|
+| VPC | `task-manager-prod-vpc` |
+| Public subnets | `task-manager-prod-public-1` (us-east-1a), `task-manager-prod-public-2` (us-east-1b) |
+| Internet Gateway | `task-manager-prod-igw` |
+| ECR backend | `task-manager-prod-backend` |
+| ECR frontend | `task-manager-prod-frontend` |
+| ECS cluster | `task-manager-prod-cluster` |
+| CloudWatch log groups | `/ecs/task-manager-prod-backend`, `/ecs/task-manager-prod-frontend` (7-day retention) |
+| IAM task execution role | `task-manager-prod-ecs-task-execution` |
+| IAM task role | `task-manager-prod-ecs-task` |
+
+### Quick start
+
+1. Run bootstrap to create S3 state bucket and DynamoDB lock table — see `infra/bootstrap/README.md`.
+2. Copy `infra/backend.hcl.example` to `infra/backend.hcl` (untracked) and fill in bootstrap outputs.
+3. Run `terraform init -backend-config=backend.hcl` then `terraform apply` from `infra/`.
+
+Full instructions and variable reference: [`infra/README.md`](infra/README.md).
+
+### Not in this part
+
+ECS services, task definitions, ALB, HTTPS, Route 53, Secrets Manager, and GitHub Actions CI/CD are not created here. They will be added in later deployment parts.
+
+---
+
 ## Starting From Scratch
 
 If you were to rebuild this project from zero, follow these steps in order.
