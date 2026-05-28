@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING
 import os
 
 _client: MongoClient | None = None
@@ -12,7 +12,10 @@ def init_db(app):
         os.environ["MONGO_URI"],
         tlsInsecure=tls_insecure,
     )
-    app.extensions["mongo_db"] = _client[os.environ.get("DB_NAME", "taskmanager")]
+    db = _client[os.environ.get("DB_NAME", "taskmanager")]
+    app.extensions["mongo_db"] = db
+    db.users.create_index([("email", ASCENDING)], unique=True)
+    db.users.create_index([("username", ASCENDING)], unique=True)
 
 
 def get_db():

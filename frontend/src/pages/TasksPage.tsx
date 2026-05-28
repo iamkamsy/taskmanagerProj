@@ -228,7 +228,7 @@ export default function TasksPage() {
 
             <div className="flex gap-2 pt-1">
               <Button type="submit" disabled={submitting} size="sm">
-                {submitting ? "Saving…" : "Save Task"}
+                {submitting ? "Saving..." : "Save Task"}
               </Button>
               <Button
                 type="button"
@@ -248,7 +248,7 @@ export default function TasksPage() {
 
         {/* Task list */}
         {loading && (
-          <p className="text-sm text-muted-foreground">Loading tasks…</p>
+          <p className="text-sm text-muted-foreground">Loading tasks...</p>
         )}
 
         {fetchError && (
@@ -312,7 +312,7 @@ export default function TasksPage() {
 
                     <div className="flex gap-2 pt-1">
                       <Button type="submit" disabled={editSubmitting} size="sm">
-                        {editSubmitting ? "Saving…" : "Save Changes"}
+                        {editSubmitting ? "Saving..." : "Save Changes"}
                       </Button>
                       <Button
                         type="button"
@@ -357,7 +357,7 @@ export default function TasksPage() {
                       onClick={() => handleDelete(task.id)}
                       aria-label="Delete task"
                     >
-                      {deletingId === task.id ? "Deleting…" : "Delete"}
+                      {deletingId === task.id ? "Deleting..." : "Delete"}
                     </Button>
                   </div>
                 </li>

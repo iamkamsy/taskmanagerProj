@@ -106,7 +106,7 @@ export default function AuthPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -119,7 +119,7 @@ export default function AuthPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Please wait…" : mode === "login" ? "Log In" : "Create Account"}
+              {loading ? "Please wait..." : mode === "login" ? "Log In" : "Create Account"}
             </Button>
 
             <p className="text-sm text-center text-muted-foreground">
@@ -138,7 +138,7 @@ export default function AuthPage() {
               className="text-sm text-muted-foreground underline"
               onClick={() => reset("landing")}
             >
-              ← Back
+              Back
             </button>
           </form>
         </CardContent>

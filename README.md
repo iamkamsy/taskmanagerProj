@@ -19,9 +19,9 @@ A secure, account-based task manager for tracking personal tasks with deadlines 
 | Layer | Technology |
 |---|---|
 | Frontend | React, TypeScript, Vite, Tailwind CSS, shadcn/ui |
-| Backend | Python, Flask, Flask-CORS, Flask-Session |
+| Backend | Python, Flask, Flask-CORS |
 | Database | MongoDB Atlas |
-| Auth | Server-side sessions with bcrypt password hashing |
+| Auth | Signed cookie sessions with bcrypt password hashing |
 
 ## Local Setup
 

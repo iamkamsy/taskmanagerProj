@@ -20,7 +20,11 @@ def _validate_fields(name: str, deadline: str, description: str):
         return "Deadline is required."
     if not _DATE_RE.match(deadline):
         return "Deadline must be a valid date in YYYY-MM-DD format."
-    if date.fromisoformat(deadline) < date.today():
+    try:
+        parsed = date.fromisoformat(deadline)
+    except ValueError:
+        return "Deadline must be a valid date in YYYY-MM-DD format."
+    if parsed < date.today():
         return "Deadline cannot be in the past."
     if not description:
         return "Description is required."

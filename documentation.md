@@ -14,7 +14,7 @@
 ### Frontend
 | Tool | Version | Purpose |
 |------|---------|---------|
-| React | 18 | UI component tree and state management |
+| React | 19 | UI component tree and state management |
 | TypeScript | 5 | Type safety across all frontend code |
 | Vite | 6 | Dev server, hot reload, and production bundler |
 | Tailwind CSS | v4 | Utility-first styling via `@import "tailwindcss"` in CSS |
@@ -26,7 +26,7 @@
 | Python | 3.14 | Runtime |
 | Flask | 3.1.0 | Web framework and routing |
 | Flask-CORS | 5.0.0 | Cross-origin request handling between Vite dev server and Flask |
-| Flask server-side sessions | built-in | Signed cookie sessions for auth state |
+| Flask signed cookie sessions | built-in | Signed cookie sessions for auth state |
 | bcrypt | 4.2.1 | Password hashing |
 | gunicorn | 23.0.0 | Production WSGI server (replaces Flask dev server) |
 | python-dotenv | 1.0.1 | Loads `.env` into `os.environ` at startup |

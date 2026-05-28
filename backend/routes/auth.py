@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, session
 import bcrypt
+from pymongo.errors import DuplicateKeyError
 from db import get_db
+from models.user import make_user
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -30,9 +32,10 @@ def signup():
         return jsonify({"error": "That username is already taken."}), 409
 
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    result = db.users.insert_one(
-        {"username": username, "email": email, "password_hash": password_hash}
-    )
+    try:
+        result = db.users.insert_one(make_user(username, email, password_hash))
+    except DuplicateKeyError:
+        return jsonify({"error": "An account with that email or username already exists."}), 409
 
     session["user_id"] = str(result.inserted_id)
     session["username"] = username
