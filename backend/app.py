@@ -27,5 +27,11 @@ init_db(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(tasks_bp)
 
+
+@app.get("/api/health")
+def health():
+    from flask import jsonify
+    return jsonify({"status": "ok"}), 200
+
 if __name__ == "__main__":
     app.run(debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true", port=5000)

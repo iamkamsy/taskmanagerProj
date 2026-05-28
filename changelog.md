@@ -4,6 +4,34 @@ A running log of issues encountered and fixes applied across each phase of the p
 
 ---
 
+## v1.1.0 - Docker foundation
+
+**Backend health endpoint added**
+Added `GET /api/health` returning `{"status": "ok"}` with HTTP 200. The endpoint itself requires no authentication and performs no MongoDB query, making it safe for ECS/ALB polling. Backend startup still runs full Flask app initialization (`MongoClient`, unique index setup) regardless of the health endpoint — the container will not reach healthy if `MONGO_URI` is missing or Atlas is unreachable at startup.
+
+**Backend Dockerfile**
+Created `backend/Dockerfile` using `python:3.12-slim`. Installs dependencies from `requirements.txt`, copies source, and runs the app with Gunicorn bound to `0.0.0.0:8000`. No `.env` file is copied into the image; all configuration is passed via environment variables at runtime.
+
+**Frontend multi-stage Dockerfile**
+Created `frontend/Dockerfile` with a two-stage build: a Node 20 stage runs `npm ci` and `npm run build`, then an nginx Alpine stage serves the built `dist/` directory as static files on port 80. Backend URLs are not baked into the image.
+
+**Frontend nginx config (production)**
+Created `frontend/nginx.conf` with a minimal server block, static file serving, and an SPA fallback. No TLS and no `/api` proxy — production `/api` routing will be handled by ALB path routing in a later deployment part.
+
+**Frontend nginx config (local compose)**
+Created `frontend/nginx.local.conf` for use with docker-compose only. Proxies `/api/` to `http://backend:8000` with standard proxy headers so browser flows work end-to-end at `http://localhost`. This file is never used inside the frontend Docker image itself; docker-compose mounts it at runtime as a volume override.
+
+**`.dockerignore` files**
+Added `backend/.dockerignore` (excludes `venv`, `__pycache__`, `.env`, `*.pyc`, etc.) and `frontend/.dockerignore` (excludes `node_modules`, `dist`, `.env`, etc.) to keep images lean.
+
+**Local smoke-test `docker-compose.yml` — env handling fix**
+`docker-compose.yml` previously interpolated `MONGO_URI` and `SECRET_KEY` directly in the `environment` block, which rendered as blank values unless those variables were also set in the shell. Fixed by removing the secret variables from the explicit `environment` block and relying solely on `env_file: ./backend/.env` for secrets. Non-secret compose-specific overrides (`SESSION_COOKIE_SECURE`, `CORS_ORIGINS`, `FLASK_DEBUG`, `TLS_INSECURE`) remain in the `environment` block. The compose header comment now correctly instructs users to copy the root `.env.example` to `backend/.env` (the repo has no `backend/.env.example`).
+
+**Documentation updated**
+Added a Docker/Containerization section to `documentation.md` covering build/run commands, env var list, the health endpoint behaviour, and a clear explanation of local vs production nginx routing. Corrected the setup instruction to reference the root `.env.example` rather than a nonexistent `backend/.env.example`.
+
+---
+
 ## v1.0.1 — Pre-merge cleanup and hardening
 
 **Frontend README source layout had a false auth.ts reference**
