@@ -4,6 +4,25 @@ A running log of issues encountered and fixes applied across each phase of the p
 
 ---
 
+## v1.0.1 — Pre-merge cleanup and hardening
+
+**Frontend README source layout had a false auth.ts reference**
+The `api/` directory only contains `tasks.ts`. The README incorrectly listed `auth.ts` as a separate file. Removed the false reference; the description now reads "task fetch helpers and SessionExpiredError".
+
+**Documentation version drift**
+`documentation.md` listed TypeScript 5 and Vite 6. Updated to TypeScript 6 and Vite 8 to match `package.json`. React version was already updated to 19 in a prior pass.
+
+**React Fast Refresh lint error: button.tsx exported both Button and buttonVariants**
+The ESLint `react-refresh/only-export-components` rule requires component files to export only components. Moved `buttonVariants` into a dedicated `frontend/src/components/ui/button-variants.ts` file. `button.tsx` now imports from there and exports only `Button`.
+
+**React Fast Refresh lint error: AuthContext.tsx exported both AuthProvider and useAuth**
+Same rule violation. Moved `useAuth` into a new `frontend/src/context/useAuth.ts` file. `AuthContext.tsx` now exports only `AuthProvider` plus the `AuthContext`, `AuthContextType`, and `AuthUser` types needed by the hook. Updated imports in `App.tsx`, `AuthPage.tsx`, and `TasksPage.tsx` to pull `useAuth` from `@/context/useAuth`.
+
+**MongoDB unique index startup note missing from documentation**
+Added a callout to `documentation.md` warning that `init_db()` creates unique indexes on `users.email` and `users.username` at startup, and that the app will fail to start if duplicate values already exist in the collection.
+
+---
+
 ## Phase 1 — Foundation
 
 **shadcn/ui init failed: Tailwind config not found**

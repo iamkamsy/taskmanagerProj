@@ -15,8 +15,8 @@
 | Tool | Version | Purpose |
 |------|---------|---------|
 | React | 19 | UI component tree and state management |
-| TypeScript | 5 | Type safety across all frontend code |
-| Vite | 6 | Dev server, hot reload, and production bundler |
+| TypeScript | 6 | Type safety across all frontend code |
+| Vite | 8 | Dev server, hot reload, and production bundler |
 | Tailwind CSS | v4 | Utility-first styling via `@import "tailwindcss"` in CSS |
 | shadcn/ui | latest | Pre-built accessible components (Button, Input, Label) |
 
@@ -36,6 +36,8 @@
 |------|---------|
 | MongoDB Atlas | Cloud-hosted database for users and tasks |
 | pymongo | 4.10.1 | Python driver for MongoDB |
+
+> **Unique indexes:** `init_db()` creates unique indexes on `users.email` and `users.username` at startup. Before enabling this against an existing collection, confirm there are no duplicate email or username values — index creation will fail and prevent the app from starting if duplicates exist.
 
 ---
 

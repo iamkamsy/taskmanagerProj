@@ -38,7 +38,7 @@ In development, `vite.config.ts` forwards any request matching `/api` to `http:/
 
 ```
 src/
-  api/          # fetch helpers (tasks.ts, auth.ts) and SessionExpiredError
+  api/          # task fetch helpers and SessionExpiredError
   components/   # shadcn/ui components (Button, Input, Label, Card, ...)
   context/      # AuthContext - user state, login/logout/signup
   pages/        # AuthPage.tsx, TasksPage.tsx

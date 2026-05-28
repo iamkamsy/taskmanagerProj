@@ -1,4 +1,4 @@
-import { useAuth } from "@/context/AuthContext"
+import { useAuth } from "@/context/useAuth"
 import AuthPage from "@/pages/AuthPage"
 import TasksPage from "@/pages/TasksPage"
 
