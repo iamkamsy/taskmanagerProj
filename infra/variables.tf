@@ -39,3 +39,61 @@ variable "log_retention_days" {
   type        = number
   default     = 7
 }
+
+# ---------------------------------------------------------------------------
+# Part 3 — image tags, desired counts, cpu/memory, CORS
+# ---------------------------------------------------------------------------
+
+variable "backend_image_tag" {
+  description = "ECR image tag to deploy for the backend container."
+  type        = string
+  default     = "dev"
+}
+
+variable "frontend_image_tag" {
+  description = "ECR image tag to deploy for the frontend container."
+  type        = string
+  default     = "dev"
+}
+
+variable "backend_desired_count" {
+  description = "Number of backend ECS tasks to run."
+  type        = number
+  default     = 1
+}
+
+variable "frontend_desired_count" {
+  description = "Number of frontend ECS tasks to run."
+  type        = number
+  default     = 1
+}
+
+variable "backend_cpu" {
+  description = "CPU units for the backend Fargate task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 256
+}
+
+variable "backend_memory" {
+  description = "Memory in MiB for the backend Fargate task."
+  type        = number
+  default     = 512
+}
+
+variable "frontend_cpu" {
+  description = "CPU units for the frontend Fargate task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 256
+}
+
+variable "frontend_memory" {
+  description = "Memory in MiB for the frontend Fargate task."
+  type        = number
+  default     = 512
+}
+
+variable "cors_origins" {
+  description = "Allowed CORS origin(s) passed to the backend container as CORS_ORIGINS."
+  type        = string
+  default     = "http://localhost"
+}

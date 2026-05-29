@@ -196,6 +196,102 @@ Open `http://localhost:5173`.
 
 ---
 
+## Deployment — Part 3: ALB, ECS Services, and Secrets
+
+> **AWS cost warning:** Part 3 adds an Application Load Balancer (~$0.008/LCU-hour + $0.0225/hour base), two ECS Fargate tasks (CPU/memory charges), and Secrets Manager API calls. Monitor your AWS billing dashboard.
+
+### Overview
+
+| Setting | Value |
+|---|---|
+| Region | `us-east-1` |
+| Environment | `prod` |
+| Protocol | HTTP only (HTTPS added in a later part) |
+| NAT Gateway | **Not created** (see cost rationale in Part 2) |
+
+### What Part 3 adds
+
+- **Application Load Balancer** (`task-manager-prod-alb`) — HTTP port 80, two public subnets.
+- **Listener routing** — `/api/*` → backend target group; all other paths → frontend target group.
+- **Security groups** — ALB accepts public TCP 80; ECS tasks accept only from ALB SG (never directly from the internet).
+- **ECS task definitions** — backend (Gunicorn on port 8000, Secrets Manager injection) and frontend (nginx on port 80).
+- **ECS services** — both run in public subnets with `assign_public_ip = true` and circuit breaker rollback enabled.
+- **Secrets Manager** — secret *containers* for `MONGO_URI` and `SECRET_KEY` (no values in Terraform).
+- **IAM** — inline policy on the task execution role granting `secretsmanager:GetSecretValue` limited to the two secret ARNs.
+
+### Deployment order (two-pass)
+
+The Secrets Manager secret containers are created by Terraform, so they do not exist before the first apply. Trying to populate secrets before running Terraform is impossible on a fresh deployment. Use the two-pass flow below.
+
+**Pass 1 — create AWS resources with zero running tasks:**
+
+```bash
+cd infra
+terraform apply \
+  -var="backend_desired_count=0" \
+  -var="frontend_desired_count=0"
+```
+
+This creates ECR repos, ALB, target groups, ECS services, task definitions, IAM, log groups, and Secrets Manager secret containers. No ECS tasks are started.
+
+**Between passes — populate secrets and push images:**
+
+```bash
+# Populate secrets (containers now exist after Pass 1)
+aws secretsmanager put-secret-value \
+  --secret-id task-manager-prod/mongo-uri \
+  --secret-string "mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/?appName=<app>"
+
+aws secretsmanager put-secret-value \
+  --secret-id task-manager-prod/secret-key \
+  --secret-string "<long-random-key>"
+
+# Build and push images (use git SHA as tag)
+TAG=$(git rev-parse --short HEAD)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin \
+    "$ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+
+docker build -t task-manager-backend ./backend
+docker tag task-manager-backend \
+  "$ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/task-manager-prod-backend:$TAG"
+docker push \
+  "$ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/task-manager-prod-backend:$TAG"
+
+docker build -t task-manager-frontend ./frontend
+docker tag task-manager-frontend \
+  "$ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/task-manager-prod-frontend:$TAG"
+docker push \
+  "$ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/task-manager-prod-frontend:$TAG"
+```
+
+**Pass 2 — start ECS tasks with real image tags:**
+
+```bash
+terraform apply \
+  -var="backend_image_tag=$TAG" \
+  -var="frontend_image_tag=$TAG" \
+  -var="backend_desired_count=1" \
+  -var="frontend_desired_count=1"
+```
+
+**Test:**
+
+```bash
+terraform output alb_url
+curl http://<alb_dns_name>/api/health  # → {"status": "ok"}
+```
+
+> **MongoDB Atlas egress:** Without a NAT Gateway, ECS task public IPs are not stable and change on task restart. For a practice deployment, temporarily allow all IPs in Atlas Network Access. For stable production egress, use a NAT Gateway with an Elastic IP or Atlas PrivateLink.
+
+### Not in this part
+
+HTTPS, ACM, Route 53, GitHub Actions CI/CD, and private subnets are not created here.
+
+---
+
 ## Deployment — Part 2: Terraform Foundation
 
 > **AWS cost warning:** AWS resources created by this Terraform configuration may incur charges even without a NAT Gateway. ECR storage, ECS cluster metadata, CloudWatch log ingestion/storage, S3 state bucket storage, and DynamoDB lock table reads/writes all have cost components. Monitor your AWS billing dashboard.

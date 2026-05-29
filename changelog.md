@@ -4,6 +4,40 @@ A running log of issues encountered and fixes applied across each phase of the p
 
 ---
 
+## v1.3.0 - ALB, ECS services, and secrets (Part 3)
+
+**Application Load Balancer**
+Added `infra/alb.tf` creating `task-manager-prod-alb` (public, HTTP port 80) with two target groups: `task-manager-prod-frontend-tg` (port 80, health check `/`) and `task-manager-prod-backend-tg` (port 8000, health check `/api/health`). An HTTP listener on port 80 uses a path-based rule (`/api/*` → backend, default → frontend).
+
+**Security groups**
+Added `infra/security_groups.tf` with three security groups: ALB SG (inbound TCP 80 from `0.0.0.0/0`), frontend ECS SG (inbound TCP 80 from ALB SG only), and backend ECS SG (inbound TCP 8000 from ALB SG only). ECS containers are never reachable directly from the internet despite running in public subnets with public IPs.
+
+**Secrets Manager**
+Added `infra/secrets.tf` creating two Secrets Manager secret containers (`task-manager-prod/mongo-uri` and `task-manager-prod/secret-key`). No values are stored in Terraform. Secret values must be populated manually via the AWS CLI or Console before ECS tasks will start.
+
+**ECS task definitions**
+Added `infra/task_definitions.tf` with Fargate task definitions for backend (family `task-manager-prod-backend`, Gunicorn on port 8000, MONGO_URI and SECRET_KEY injected from Secrets Manager) and frontend (family `task-manager-prod-frontend`, nginx on port 80). Both use awsvpc networking and write logs to the existing CloudWatch log groups.
+
+**ECS services**
+Added `infra/services.tf` with Fargate services for backend and frontend. Both run in public subnets with `assign_public_ip = true`, are attached to their respective ALB target groups, depend on the HTTP listener, and have deployment circuit breaker with rollback enabled.
+
+**IAM — Secrets Manager read policy**
+Updated `infra/iam.tf` to add an inline policy on the task execution role granting `secretsmanager:GetSecretValue` scoped to exactly the two secret ARNs. No wildcard permissions.
+
+**Variables**
+Added nine new variables to `infra/variables.tf`: `backend_image_tag`, `frontend_image_tag`, `backend_desired_count`, `frontend_desired_count`, `backend_cpu`, `backend_memory`, `frontend_cpu`, `frontend_memory`, `cors_origins`.
+
+**Outputs**
+Added eight new outputs to `infra/outputs.tf`: `alb_dns_name`, `alb_url`, `frontend_service_name`, `backend_service_name`, `frontend_target_group_arn`, `backend_target_group_arn`, `mongo_uri_secret_arn`, `secret_key_secret_arn`.
+
+**Documentation**
+Added Part 3 deployment section to `documentation.md` covering the new resources, manual pre-deploy steps (secrets, ECR push), apply command, and test instructions. Updated `infra/README.md` to reflect the full Part 3 architecture, file table, variable table, secrets population instructions, ECR push guide, and apply/test commands.
+
+**Deployment doc fix — two-pass Terraform flow**
+The original docs said to populate Secrets Manager secrets before `terraform apply`, but the secret containers are created by Terraform and do not exist before the first apply. Fixed by documenting a two-pass deployment: Pass 1 applies with `backend_desired_count=0` and `frontend_desired_count=0` to create all AWS resources (including secret containers and ECR repos) without starting ECS tasks; between passes the user populates secrets and pushes images; Pass 2 applies with real image tags and desired count 1 to start tasks. Also added a note that ECS task public IPs are not stable without a NAT Gateway, and that MongoDB Atlas Network Access may need to allow all IPs temporarily for a practice deployment.
+
+---
+
 ## v1.2.0 - Terraform foundation (Part 2)
 
 **Partial S3 backend config (backend.hcl)**
